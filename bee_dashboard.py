@@ -1,4 +1,3 @@
-
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -99,9 +98,9 @@ def main():
             fig.add_trace(go.Scatter(
                 x=year_data['X'],
                 y=year_data['Value'],
-                mode='markers',
+                mode='lines',
                 name=str(year),
-                marker=dict(color=color_mapping[year])
+                line=dict(color=color_mapping[year])
             ))
 
     fig.update_layout(
