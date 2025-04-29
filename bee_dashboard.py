@@ -9,7 +9,7 @@ merged_df = pd.read_csv('merged_bee_data_2022_2023_2024.csv')
 
 # Normalize dates
 merged_df['Date'] = pd.to_datetime(merged_df['Date'], errors='coerce')
-merged_df['MonthDay'] = merged_df['Date'].dt.strftime('%m-%d')
+merged_df['DayOfYear'] = merged_df['Date'].dt.dayofyear
 merged_df['Year'] = merged_df['Date'].dt.year
 
 # Extract relevant columns
@@ -24,8 +24,8 @@ metrics = {
 def prepare_metric(metric_cols, label):
     data = pd.DataFrame()
     for idx, year in enumerate([2022, 2023, 2024]):
-        temp = merged_df[['MonthDay', metric_cols[idx]]].copy()
-        temp.columns = ['MonthDay', 'Value']
+        temp = merged_df[['DayOfYear', metric_cols[idx]]].copy()
+        temp.columns = ['DayOfYear', 'Value']
         temp['Year'] = year
         temp['Metric'] = label
         data = pd.concat([data, temp], axis=0)
@@ -38,8 +38,8 @@ def prepare_combined_conversion():
         df[f'Combined {year}'] = df.get(f'Web Attributed Leads {year}', 0) + df.get(f'Web Attributed Joins {year}', 0)
     data = pd.DataFrame()
     for year in [2022, 2023, 2024]:
-        temp = df[['MonthDay', f'Combined {year}']].copy()
-        temp.columns = ['MonthDay', 'Value']
+        temp = df[['DayOfYear', f'Combined {year}']].copy()
+        temp.columns = ['DayOfYear', 'Value']
         temp['Year'] = year
         temp['Metric'] = 'Combined Conversion'
         data = pd.concat([data, temp], axis=0)
@@ -75,13 +75,15 @@ def main():
     chart_data = full_data[full_data['Metric'] == selected_metric]
 
     if group_by == 'Week':
-        chart_data['Week'] = pd.to_datetime('2024-' + chart_data['MonthDay']).dt.isocalendar().week
-        x_col = 'Week'
+        chart_data['X'] = ((chart_data['DayOfYear'] - 1) // 7) + 1
+        x_title = 'Week Number'
     elif group_by == 'Month':
-        chart_data['Month'] = pd.to_datetime('2024-' + chart_data['MonthDay']).dt.month
-        x_col = 'Month'
+        chart_data['X'] = pd.to_datetime('2024-01-01') + pd.to_timedelta(chart_data['DayOfYear'] - 1, unit='d')
+        chart_data['X'] = chart_data['X'].dt.month
+        x_title = 'Month'
     else:
-        x_col = 'MonthDay'
+        chart_data['X'] = chart_data['DayOfYear']
+        x_title = 'Day of Year'
 
     fig = go.Figure()
 
@@ -95,7 +97,7 @@ def main():
         if (year == 2022 and show_2022) or (year == 2023 and show_2023) or (year == 2024 and show_2024):
             year_data = chart_data[chart_data['Year'] == year]
             fig.add_trace(go.Scatter(
-                x=year_data[x_col],
+                x=year_data['X'],
                 y=year_data['Value'],
                 mode='markers',
                 name=str(year),
@@ -104,7 +106,7 @@ def main():
 
     fig.update_layout(
         title=f"{selected_metric} Over Time",
-        xaxis_title=x_col,
+        xaxis_title=x_title,
         yaxis_title=selected_metric,
         legend_title="Year",
         height=600
